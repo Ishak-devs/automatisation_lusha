@@ -10,6 +10,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
+app.use(
+  "/vendor/chart.umd.js",
+  express.static(path.join(__dirname, "node_modules/chart.js/dist/chart.umd.js"))
+);
 
 const DB_PATH = path.join(__dirname, "db.json");
 
