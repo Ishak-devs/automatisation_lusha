@@ -164,11 +164,17 @@ async function render(){
     return;
   }
 
-  const seniorityCount = countBy(db.contacts||[], c => c.seniority || c.jobTitle);
-  const industryCount = countBy(db.companies||[], c => c.industry || c.mainIndustry);
+  const seniorityCount = countBy(db.contacts||[], c => c.jobTitle?.seniority || c.jobTitle?.title);
+  const industryCount = countBy(db.companies||[], c => c.industry);
   const allSignals = [...(db.companySignals||[]), ...(db.contactSignals||[])];
-  const signalTypeCount = countBy(allSignals, s => s.signalType || s.type);
-  const sizeCount = countBy(db.companies||[], c => c.employeeRange || c.size || c.companySize);
+  const signalTypeCount = countBy(allSignals, s => s.type || s.signalType);
+  const sizeCount = countBy(db.companies||[], c => {
+    const e = c.employeeCount;
+    if(!e) return 'Inconnu';
+    if(e.exact) return `${e.exact} employés`;
+    if(e.min || e.max) return `${e.min||'?'}–${e.max||'?'}`;
+    return 'Inconnu';
+  });
 
   $('#main').innerHTML = renderKPIs(db) + `
   <div class="grid">
@@ -198,9 +204,9 @@ async function render(){
       <tbody>
         ${allSignals.slice(0,10).map(s => `
           <tr>
-            <td>${signalTag(s.signalType || s.type)}</td>
-            <td>${s.companyName || s.contactName || s.fullName || '—'}</td>
-            <td style="color:var(--muted)">${(s.description || s.title || JSON.stringify(s).slice(0,60))}</td>
+            <td>${signalTag(s.type || s.signalType)}</td>
+            <td>${s.data?.currentCompanyName || s.data?.companyName || s.companyName || '—'}</td>
+            <td style="color:var(--muted)">${(s.data?.eventSummary || s.data?.articleTitle || s.type || JSON.stringify(s).slice(0,60))}</td>
           </tr>`).join('')}
       </tbody>
     </table>

@@ -34,8 +34,12 @@ const DEFAULT_COMPANY_FILTERS = JSON.parse(
 
 async function runSync() {
   console.log("[sync] démarrage...");
+  console.log("[sync] recherche contacts...");
   const contacts = await lusha.searchContacts(DEFAULT_CONTACT_FILTERS, 25);
+  console.log(`[sync] ${contacts.length} contacts ok`);
+  console.log("[sync] recherche entreprises...");
   const companies = await lusha.searchCompanies(DEFAULT_COMPANY_FILTERS, 25);
+  console.log(`[sync] ${companies.length} entreprises ok`);
 
   const companyIds = companies.map((c) => c.companyId || c.id).filter(Boolean);
   const contactIds = contacts.map((c) => c.contactId || c.id).filter(Boolean);

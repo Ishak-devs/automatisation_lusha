@@ -1,5 +1,5 @@
 // lusha.js — wrapper autour de l'API REST Lusha v3
-// Doc: https://docs.lusha.com
+// Doc: https://docs.lusha.com/apis/openapi
 
 const axios = require("axios");
 
@@ -11,7 +11,7 @@ function client() {
   return axios.create({
     baseURL: BASE_URL,
     headers: {
-      "api_key": apiKey,
+      api_key: apiKey,
       "Content-Type": "application/json",
     },
     timeout: 20000,
@@ -19,60 +19,64 @@ function client() {
 }
 
 // Recherche + enrichissement de contacts selon des filtres ICP
-// filters ex: { jobTitles: ["CEO","CTO"], seniority: ["director","vp","c_suite"] }
-async function searchContacts(filters = {}, limit = 25) {
+// contactFilters ex: { jobTitles: ["CEO","CTO"], seniorityIds: [4,5] }
+async function searchContacts(contactFilters = {}, limit = 25) {
   const api = client();
-  const search = await api.post("/prospecting/contact/search", {
-    filters,
-    pages: { page: 0, size: limit },
+  const search = await api.post("/contacts/prospecting", {
+    pagination: { page: 0, size: limit },
+    filters: {
+      contacts: { include: contactFilters },
+    },
   });
-  const ids = (search.data?.results || search.data?.contacts || [])
-    .map((c) => c.contactId || c.id)
+  const ids = (search.data?.results || [])
+    .map((c) => c.id)
     .filter(Boolean);
   if (!ids.length) return [];
-  const enrich = await api.post("/prospecting/contact/enrich", {
-    contactIds: ids,
+  const enrich = await api.post("/contacts/enrich", {
+    ids,
+    reveal: ["emails", "phones"],
   });
-  return enrich.data?.contacts || enrich.data?.results || [];
+  return enrich.data?.results || [];
 }
 
 // Recherche + enrichissement d'entreprises
-async function searchCompanies(filters = {}, limit = 25) {
+// companyFilters ex: { locations: [{country:"France"}], sizes: [{min:50,max:500}] }
+async function searchCompanies(companyFilters = {}, limit = 25) {
   const api = client();
-  const search = await api.post("/prospecting/company/search", {
-    filters,
-    pages: { page: 0, size: limit },
+  const search = await api.post("/companies/prospecting", {
+    pagination: { page: 0, size: limit },
+    filters: {
+      companies: { include: companyFilters },
+    },
   });
-  const ids = (search.data?.results || search.data?.companies || [])
-    .map((c) => c.companyId || c.id)
+  const ids = (search.data?.results || [])
+    .map((c) => c.id)
     .filter(Boolean);
   if (!ids.length) return [];
-  const enrich = await api.post("/prospecting/company/enrich", {
-    companyIds: ids,
-  });
-  return enrich.data?.companies || enrich.data?.results || [];
+  const enrich = await api.post("/companies/enrich", { ids });
+  return enrich.data?.results || [];
 }
 
 // Signaux d'activité sur des entreprises (hiring, news, headcount...)
 async function getCompanySignals(companyIds = [], signalTypes = ["allSignals"]) {
   if (!companyIds.length) return [];
   const api = client();
-  const res = await api.post("/signals/company/search", {
-    companyIds,
+  const res = await api.post("/companies/signals", {
+    ids: companyIds,
     signalTypes,
   });
-  return res.data?.results || res.data?.signals || [];
+  return res.data?.results || [];
 }
 
 // Signaux sur des contacts (promotion, changement d'entreprise)
 async function getContactSignals(contactIds = [], signalTypes = ["allSignals"]) {
   if (!contactIds.length) return [];
   const api = client();
-  const res = await api.post("/signals/contact/search", {
-    contactIds,
+  const res = await api.post("/contacts/signals", {
+    ids: contactIds,
     signalTypes,
   });
-  return res.data?.results || res.data?.signals || [];
+  return res.data?.results || [];
 }
 
 module.exports = {
