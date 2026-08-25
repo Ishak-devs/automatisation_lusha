@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Radar — Dashboard Lusha</title>
+<script src="/vendor/chart.umd.js"></script>
+<style>
+  :root{
+    --bg: #0e1214;
+    --panel: #161b1e;
+    --panel-2: #1d2327;
+    --line: #2a3136;
+    --text: #e7ecee;
+    --muted: #8a9499;
+    --signal: #2ee6a6;
+    --signal-dim: #1a5c47;
+    --amber: #e6b32e;
+    --violet: #8a7cf0;
+    --coral: #e6612e;
+    --mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+    --sans: "Inter", -apple-system, "Segoe UI", sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--sans); min-height:100vh;
+  }
+  header{
+    padding:28px 32px 20px; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;
+  }
+  .brand{display:flex; align-items:baseline; gap:10px;}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal); box-shadow:0 0 10px var(--signal); display:inline-block;}
+  h1{font-size:20px; margin:0; letter-spacing:0.02em; font-weight:600;}
+  .eyebrow{font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.12em;}
+  .status{font-family:var(--mono); font-size:12px; color:var(--muted); text-align:right;}
+  .status b{color:var(--text);}
+  button{
+    font-family:var(--mono); font-size:12px; background:var(--signal); color:#04140f;
+    border:none; padding:9px 16px; border-radius:6px; cursor:pointer; font-weight:600;
+    letter-spacing:0.03em;
+  }
+  button:hover{filter:brightness(1.08);}
+  button:disabled{opacity:0.5; cursor:wait;}
+  main{padding:24px 32px 60px; max-width:1400px; margin:0 auto;}
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:24px;}
+  .kpi{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px 20px;}
+  .kpi .n{font-family:var(--mono); font-size:30px; font-weight:700; line-height:1;}
+  .kpi .l{color:var(--muted); font-size:12px; margin-top:8px; text-transform:uppercase; letter-spacing:0.08em;}
+  .grid{display:grid; grid-template-columns:1.3fr 1fr; gap:16px; margin-bottom:16px;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media(max-width:900px){.grid,.grid3{grid-template-columns:1fr;}}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:20px;}
+  .card h2{font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin:0 0 16px; font-weight:600;}
+  .card canvas{max-height:280px;}
+  .empty{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:80px 20px; color:var(--muted); text-align:center; gap:14px;
+  }
+  .empty .eyebrow{color:var(--signal);}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{text-align:left; padding:8px 6px; border-bottom:1px solid var(--line);}
+  th{color:var(--muted); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:0.05em;}
+  .tag{display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-family:var(--mono);}
+  .tag.hire{background:rgba(46,230,166,0.12); color:var(--signal);}
+  .tag.news{background:rgba(138,124,240,0.15); color:var(--violet);}
+  .tag.change{background:rgba(230,179,46,0.15); color:var(--amber);}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="eyebrow">Radar — pipeline commercial</div>
+    <div class="brand"><span class="dot"></span><h1>Dashboard Lusha</h1></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:16px;">
+    <div class="status" id="status">dernière sync : —</div>
+    <button id="syncBtn">Lancer la sync</button>
+  </div>
+</header>
+
+<main id="main">
+  <div class="empty">
+    <div class="eyebrow">Chargement</div>
+    <div>Récupération des données...</div>
+  </div>
+</main>
+
+<script>
+const $ = (s,el=document) => el.querySelector(s);
+const colors = { signal:'#2ee6a6', amber:'#e6b32e', violet:'#8a7cf0', coral:'#e6612e', muted:'#3a4247' };
+let charts = [];
+
+function destroyCharts(){ charts.forEach(c=>c.destroy()); charts = []; }
+
+function countBy(arr, fn){
+  const map = {};
+  arr.forEach(item=>{
+    const k = fn(item) || 'Inconnu';
+    map[k] = (map[k]||0)+1;
+  });
+  return map;
+}
+
+function renderKPIs(db){
+  return `
+  <div class="kpis">
+    <div class="kpi"><div class="n" style="color:${colors.signal}">${db.contacts?.length||0}</div><div class="l">Contacts</div></div>
+    <div class="kpi"><div class="n" style="color:${colors.violet}">${db.companies?.length||0}</div><div class="l">Entreprises</div></div>
+    <div class="kpi"><div class="n" style="color:${colors.coral}">${db.lastSync ? new Date(db.lastSync).toLocaleDateString('fr-FR') : '—'}</div><div class="l">Dernière sync</div></div>
+  </div>`;
+}
+
+function makeBarChart(ctx, labels, data, color){
+  return new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ data, backgroundColor: color, borderRadius:4, maxBarThickness:34 }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#8a9499', font:{family:'monospace', size:11}}, grid:{display:false}},
+        y:{ticks:{color:'#8a9499', font:{family:'monospace', size:11}}, grid:{color:'#2a3136'}, beginAtZero:true}
+      }
+    }
+  });
+}
+
+function makeDonut(ctx, labels, data, colorsArr){
+  return new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data, backgroundColor: colorsArr, borderColor:'#161b1e', borderWidth:2 }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom', labels:{color:'#e7ecee', font:{family:'monospace', size:11}, boxWidth:10}}}
+    }
+  });
+}
+
+function signalTag(type){
+  const t = (type||'').toLowerCase();
+  if(t.includes('hir') || t.includes('headcount')) return '<span class="tag hire">hiring</span>';
+  if(t.includes('news') || t.includes('strategy') || t.includes('financial')) return '<span class="tag news">news</span>';
+  return '<span class="tag change">changement</span>';
+}
+
+async function render(){
+  const res = await fetch('/api/data');
+  const db = await res.json();
+  $('#status').innerHTML = db.lastSync ? `dernière sync : <b>${new Date(db.lastSync).toLocaleString('fr-FR')}</b>` : 'dernière sync : <b>jamais</b>';
+
+  const hasData = (db.contacts?.length||0) + (db.companies?.length||0) > 0;
+  destroyCharts();
+
+  if(!hasData){
+    $('#main').innerHTML = `<div class="empty">
+      <div class="eyebrow">Aucune donnée</div>
+      <div>Rien à afficher pour l'instant.<br/>Configurez LUSHA_API_KEY côté serveur puis lancez une sync.</div>
+    </div>`;
+    return;
+  }
+
+  const seniorityCount = countBy(db.contacts||[], c => c.jobTitle?.seniority || c.jobTitle?.title);
+  const industryCount = countBy(db.companies||[], c => c.industry);
+  const allSignals = [...(db.companySignals||[]), ...(db.contactSignals||[])];
+  const hasSignals = allSignals.length > 0;
+  const signalTypeCount = countBy(allSignals, s => s.type || s.signalType);
+  const sizeCount = countBy(db.companies||[], c => {
+    const e = c.employeeCount;
+    if(!e) return 'Inconnu';
+    if(e.exact) return `${e.exact} employés`;
+    if(e.min || e.max) return `${e.min||'?'}–${e.max||'?'}`;
+    return 'Inconnu';
+  });
+
+  $('#main').innerHTML = renderKPIs(db) + `
+  <div class="grid">
+    <div class="card">
+      <h2>Contacts par séniorité</h2>
+      <canvas id="c1"></canvas>
+    </div>
+    <div class="card">
+      <h2>Entreprises par industrie</h2>
+      <canvas id="c3"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Entreprises par taille</h2>
+    <canvas id="c4"></canvas>
+  </div>
+  ${hasSignals ? `
+  <div class="card" style="margin-top:16px;">
+    <h2>Répartition des signaux</h2>
+    <canvas id="c2"></canvas>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <h2>Derniers signaux</h2>
+    <table>
+      <thead><tr><th>Type</th><th>Cible</th><th>Détail</th></tr></thead>
+      <tbody>
+        ${allSignals.slice(0,10).map(s => `
+          <tr>
+            <td>${signalTag(s.type || s.signalType)}</td>
+            <td>${s.data?.currentCompanyName || s.data?.companyName || s.companyName || '—'}</td>
+            <td style="color:var(--muted)">${(s.data?.eventSummary || s.data?.articleTitle || s.type || JSON.stringify(s).slice(0,60))}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>` : ''}
+  `;
+
+  charts.push(makeBarChart($('#c1'), Object.keys(seniorityCount), Object.values(seniorityCount), colors.signal));
+  charts.push(makeBarChart($('#c3'), Object.keys(industryCount), Object.values(industryCount), colors.violet));
+  charts.push(makeBarChart($('#c4'), Object.keys(sizeCount), Object.values(sizeCount), colors.amber));
+  if(hasSignals){
+    charts.push(makeDonut($('#c2'), Object.keys(signalTypeCount), Object.values(signalTypeCount), [colors.signal,colors.amber,colors.violet,colors.coral,'#4a545a']));
+  }
+}
+
+$('#syncBtn').addEventListener('click', async () => {
+  const btn = $('#syncBtn');
+  btn.disabled = true; btn.textContent = 'Sync en cours...';
+  try{
+    const r = await fetch('/api/sync', {method:'POST'});
+    const j = await r.json();
+    if(!j.ok) throw new Error(JSON.stringify(j.error));
+    await render();
+  }catch(e){
+    alert('Erreur sync: ' + e.message);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Lancer la sync';
+  }
+});
+
+render();
+</script>
+</body>
+</html>
