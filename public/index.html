@@ -105,12 +105,10 @@ function countBy(arr, fn){
 }
 
 function renderKPIs(db){
-  const totalSignals = (db.companySignals?.length||0) + (db.contactSignals?.length||0);
   return `
   <div class="kpis">
     <div class="kpi"><div class="n" style="color:${colors.signal}">${db.contacts?.length||0}</div><div class="l">Contacts</div></div>
     <div class="kpi"><div class="n" style="color:${colors.violet}">${db.companies?.length||0}</div><div class="l">Entreprises</div></div>
-    <div class="kpi"><div class="n" style="color:${colors.amber}">${totalSignals}</div><div class="l">Signaux détectés</div></div>
     <div class="kpi"><div class="n" style="color:${colors.coral}">${db.lastSync ? new Date(db.lastSync).toLocaleDateString('fr-FR') : '—'}</div><div class="l">Dernière sync</div></div>
   </div>`;
 }
@@ -167,6 +165,7 @@ async function render(){
   const seniorityCount = countBy(db.contacts||[], c => c.jobTitle?.seniority || c.jobTitle?.title);
   const industryCount = countBy(db.companies||[], c => c.industry);
   const allSignals = [...(db.companySignals||[]), ...(db.contactSignals||[])];
+  const hasSignals = allSignals.length > 0;
   const signalTypeCount = countBy(allSignals, s => s.type || s.signalType);
   const sizeCount = countBy(db.companies||[], c => {
     const e = c.employeeCount;
@@ -183,19 +182,18 @@ async function render(){
       <canvas id="c1"></canvas>
     </div>
     <div class="card">
-      <h2>Répartition des signaux</h2>
-      <canvas id="c2"></canvas>
-    </div>
-  </div>
-  <div class="grid3">
-    <div class="card">
       <h2>Entreprises par industrie</h2>
       <canvas id="c3"></canvas>
     </div>
-    <div class="card">
-      <h2>Entreprises par taille</h2>
-      <canvas id="c4"></canvas>
-    </div>
+  </div>
+  <div class="card">
+    <h2>Entreprises par taille</h2>
+    <canvas id="c4"></canvas>
+  </div>
+  ${hasSignals ? `
+  <div class="card" style="margin-top:16px;">
+    <h2>Répartition des signaux</h2>
+    <canvas id="c2"></canvas>
   </div>
   <div class="card" style="margin-top:16px;">
     <h2>Derniers signaux</h2>
@@ -210,13 +208,15 @@ async function render(){
           </tr>`).join('')}
       </tbody>
     </table>
-  </div>
+  </div>` : ''}
   `;
 
   charts.push(makeBarChart($('#c1'), Object.keys(seniorityCount), Object.values(seniorityCount), colors.signal));
-  charts.push(makeDonut($('#c2'), Object.keys(signalTypeCount), Object.values(signalTypeCount), [colors.signal,colors.amber,colors.violet,colors.coral,'#4a545a']));
   charts.push(makeBarChart($('#c3'), Object.keys(industryCount), Object.values(industryCount), colors.violet));
   charts.push(makeBarChart($('#c4'), Object.keys(sizeCount), Object.values(sizeCount), colors.amber));
+  if(hasSignals){
+    charts.push(makeDonut($('#c2'), Object.keys(signalTypeCount), Object.values(signalTypeCount), [colors.signal,colors.amber,colors.violet,colors.coral,'#4a545a']));
+  }
 }
 
 $('#syncBtn').addEventListener('click', async () => {

@@ -61,9 +61,13 @@ async function searchCompanies(companyFilters = {}, limit = 25) {
 async function getCompanySignals(companyIds = [], signalTypes = ["allSignals"]) {
   if (!companyIds.length) return [];
   const api = client();
+  const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
   const res = await api.post("/companies/signals", {
     ids: companyIds,
     signalTypes,
+    startDate: sixMonthsAgo,
   });
   return res.data?.results || [];
 }
@@ -72,9 +76,13 @@ async function getCompanySignals(companyIds = [], signalTypes = ["allSignals"]) 
 async function getContactSignals(contactIds = [], signalTypes = ["allSignals"]) {
   if (!contactIds.length) return [];
   const api = client();
+  const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
   const res = await api.post("/contacts/signals", {
     ids: contactIds,
     signalTypes,
+    startDate: sixMonthsAgo,
   });
   return res.data?.results || [];
 }

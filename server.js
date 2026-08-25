@@ -41,11 +41,12 @@ async function runSync() {
   const companies = await lusha.searchCompanies(DEFAULT_COMPANY_FILTERS, 25);
   console.log(`[sync] ${companies.length} entreprises ok`);
 
-  const companyIds = companies.map((c) => c.companyId || c.id).filter(Boolean);
-  const contactIds = contacts.map((c) => c.contactId || c.id).filter(Boolean);
+  const companyIds = companies.map((c) => c.id).filter(Boolean);
+  const contactIds = contacts.map((c) => c.id).filter(Boolean);
 
-  const companySignals = await lusha.getCompanySignals(companyIds);
-  const contactSignals = await lusha.getContactSignals(contactIds);
+  // Signaux désactivés (endpoint instable / non activé sur le plan actuel)
+  const companySignals = [];
+  const contactSignals = [];
 
   const data = {
     contacts,
