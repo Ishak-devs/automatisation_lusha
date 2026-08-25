@@ -6,74 +6,110 @@
 <title>Radar — Dashboard Lusha</title>
 <script src="/vendor/chart.umd.js"></script>
 <style>
-  :root{
-    --bg: #0e1214;
-    --panel: #161b1e;
-    --panel-2: #1d2327;
-    --line: #2a3136;
-    --text: #e7ecee;
-    --muted: #8a9499;
-    --signal: #2ee6a6;
-    --signal-dim: #1a5c47;
-    --amber: #e6b32e;
-    --violet: #8a7cf0;
-    --coral: #e6612e;
-    --mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
-    --sans: "Inter", -apple-system, "Segoe UI", sans-serif;
-  }
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
   *{box-sizing:border-box;}
+  :root{
+    --orange: #FF7300;
+    --black: #000000;
+    --white: #FFFFFF;
+    --purple: #7065A1;
+    --blue: #67B1EB;
+    --yellow: #F9B125;
+    --green: #65BF92;
+    --rust: #E26338;
+    --grey-100: #F5F5F5;
+    --grey-200: #E0E0E0;
+    --grey-600: #757575;
+    --radius: 12px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+    --font: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
   body{
-    margin:0; background:var(--bg); color:var(--text);
-    font-family:var(--sans); min-height:100vh;
+    margin:0; background:var(--grey-100); color:var(--black);
+    font-family:var(--font); min-height:100vh;
   }
+
+  /* HEADER — style page-header de la charte */
   header{
-    padding:28px 32px 20px; border-bottom:1px solid var(--line);
-    display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;
+    background:var(--black); color:#fff;
+    padding:36px 40px; border-radius:var(--radius);
+    margin:24px 24px 20px; position:relative; overflow:hidden;
+    display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px;
   }
-  .brand{display:flex; align-items:baseline; gap:10px;}
-  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal); box-shadow:0 0 10px var(--signal); display:inline-block;}
-  h1{font-size:20px; margin:0; letter-spacing:0.02em; font-weight:600;}
-  .eyebrow{font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.12em;}
-  .status{font-family:var(--mono); font-size:12px; color:var(--muted); text-align:right;}
-  .status b{color:var(--text);}
+  header::before{
+    content:''; position:absolute; top:-60px; right:-60px;
+    width:260px; height:260px; background:var(--orange); border-radius:50%; opacity:0.15;
+  }
+  header::after{
+    content:''; position:absolute; bottom:-70px; right:100px;
+    width:170px; height:170px; background:var(--purple); border-radius:50%; opacity:0.2;
+  }
+  .kicker{
+    font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--orange); margin-bottom:10px; position:relative; z-index:1;
+  }
+  h1{
+    font-family:var(--font); font-weight:700; font-size:28px; margin:0;
+    position:relative; z-index:1; letter-spacing:0.01em;
+  }
+  .status{
+    font-size:12px; color:rgba(255,255,255,0.6); text-align:right; position:relative; z-index:1;
+  }
+  .status b{color:#fff;}
   button{
-    font-family:var(--mono); font-size:12px; background:var(--signal); color:#04140f;
-    border:none; padding:9px 16px; border-radius:6px; cursor:pointer; font-weight:600;
-    letter-spacing:0.03em;
+    font-family:var(--font); font-size:14px; font-weight:700; background:var(--orange); color:#fff;
+    border:2px solid transparent; padding:12px 24px; border-radius:8px; cursor:pointer;
+    transition:all 0.15s; position:relative; z-index:1;
   }
-  button:hover{filter:brightness(1.08);}
-  button:disabled{opacity:0.5; cursor:wait;}
-  main{padding:24px 32px 60px; max-width:1400px; margin:0 auto;}
-  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:24px;}
-  .kpi{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px 20px;}
-  .kpi .n{font-family:var(--mono); font-size:30px; font-weight:700; line-height:1;}
-  .kpi .l{color:var(--muted); font-size:12px; margin-top:8px; text-transform:uppercase; letter-spacing:0.08em;}
-  .grid{display:grid; grid-template-columns:1.3fr 1fr; gap:16px; margin-bottom:16px;}
-  .grid3{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
-  @media(max-width:900px){.grid,.grid3{grid-template-columns:1fr;}}
-  .card{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:20px;}
-  .card h2{font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin:0 0 16px; font-weight:600;}
+  button:hover{opacity:0.85; transform:translateY(-1px);}
+  button:disabled{opacity:0.5; cursor:wait; transform:none;}
+
+  main{padding:0 24px 60px; max-width:1400px; margin:0 auto;}
+
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:20px;}
+  .kpi{background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:20px 22px;}
+  .kpi .n{font-weight:700; font-size:30px; line-height:1;}
+  .kpi .l{color:var(--grey-600); font-size:12px; margin-top:8px; text-transform:uppercase; letter-spacing:0.06em; font-weight:700;}
+
+  .grid{display:grid; grid-template-columns:1.2fr 1fr; gap:16px; margin-bottom:16px;}
+  @media(max-width:900px){.grid{grid-template-columns:1fr;}}
+
+  .card{background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:28px;}
+  .card + .card{margin-top:0;}
+  .card h2{
+    font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--grey-600);
+    margin:0 0 18px; font-weight:700;
+  }
   .card canvas{max-height:280px;}
+
   .empty{
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    padding:80px 20px; color:var(--muted); text-align:center; gap:14px;
+    padding:80px 20px; color:var(--grey-600); text-align:center; gap:14px;
+    background:#fff; border-radius:var(--radius); box-shadow:var(--shadow);
   }
-  .empty .eyebrow{color:var(--signal);}
+  .empty .kicker{color:var(--orange);}
+
   table{width:100%; border-collapse:collapse; font-size:13px;}
-  th,td{text-align:left; padding:8px 6px; border-bottom:1px solid var(--line);}
-  th{color:var(--muted); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:0.05em;}
-  .tag{display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-family:var(--mono);}
-  .tag.hire{background:rgba(46,230,166,0.12); color:var(--signal);}
-  .tag.news{background:rgba(138,124,240,0.15); color:var(--violet);}
-  .tag.change{background:rgba(230,179,46,0.15); color:var(--amber);}
+  th,td{text-align:left; padding:10px 8px; border-bottom:1px solid var(--grey-200);}
+  th{color:var(--grey-600); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.05em;}
+
+  .tag{
+    display:inline-flex; align-items:center; gap:6px; padding:4px 12px;
+    border-radius:20px; font-size:12px; font-weight:700;
+  }
+  .tag-orange{background:rgba(255,115,0,0.12); color:var(--orange);}
+  .tag-purple{background:rgba(112,101,161,0.12); color:var(--purple);}
+  .tag-blue{background:rgba(103,177,235,0.15); color:#3a8ece;}
+  .tag-green{background:rgba(101,191,146,0.15); color:#2e8a5f;}
+  .tag-yellow{background:rgba(249,177,37,0.15); color:#b07a00;}
 </style>
 </head>
 <body>
 
 <header>
   <div>
-    <div class="eyebrow">Radar — pipeline commercial</div>
-    <div class="brand"><span class="dot"></span><h1>Dashboard Lusha</h1></div>
+    <div class="kicker">Radar — pipeline commercial</div>
+    <h1>Dashboard Lusha</h1>
   </div>
   <div style="display:flex; align-items:center; gap:16px;">
     <div class="status" id="status">dernière sync : —</div>
@@ -83,14 +119,17 @@
 
 <main id="main">
   <div class="empty">
-    <div class="eyebrow">Chargement</div>
+    <div class="kicker">Chargement</div>
     <div>Récupération des données...</div>
   </div>
 </main>
 
 <script>
 const $ = (s,el=document) => el.querySelector(s);
-const colors = { signal:'#2ee6a6', amber:'#e6b32e', violet:'#8a7cf0', coral:'#e6612e', muted:'#3a4247' };
+const colors = {
+  orange:'#FF7300', purple:'#7065A1', blue:'#67B1EB',
+  yellow:'#F9B125', green:'#65BF92', rust:'#E26338', grey:'#E0E0E0'
+};
 let charts = [];
 
 function destroyCharts(){ charts.forEach(c=>c.destroy()); charts = []; }
@@ -107,22 +146,22 @@ function countBy(arr, fn){
 function renderKPIs(db){
   return `
   <div class="kpis">
-    <div class="kpi"><div class="n" style="color:${colors.signal}">${db.contacts?.length||0}</div><div class="l">Contacts</div></div>
-    <div class="kpi"><div class="n" style="color:${colors.violet}">${db.companies?.length||0}</div><div class="l">Entreprises</div></div>
-    <div class="kpi"><div class="n" style="color:${colors.coral}">${db.lastSync ? new Date(db.lastSync).toLocaleDateString('fr-FR') : '—'}</div><div class="l">Dernière sync</div></div>
+    <div class="kpi"><div class="n" style="color:${colors.orange}">${db.contacts?.length||0}</div><div class="l">Contacts</div></div>
+    <div class="kpi"><div class="n" style="color:${colors.purple}">${db.companies?.length||0}</div><div class="l">Entreprises</div></div>
+    <div class="kpi"><div class="n" style="color:${colors.rust}">${db.lastSync ? new Date(db.lastSync).toLocaleDateString('fr-FR') : '—'}</div><div class="l">Dernière sync</div></div>
   </div>`;
 }
 
 function makeBarChart(ctx, labels, data, color){
   return new Chart(ctx, {
     type:'bar',
-    data:{ labels, datasets:[{ data, backgroundColor: color, borderRadius:4, maxBarThickness:34 }]},
+    data:{ labels, datasets:[{ data, backgroundColor: color, borderRadius:6, maxBarThickness:34 }]},
     options:{
       responsive:true, maintainAspectRatio:false,
       plugins:{legend:{display:false}},
       scales:{
-        x:{ticks:{color:'#8a9499', font:{family:'monospace', size:11}}, grid:{display:false}},
-        y:{ticks:{color:'#8a9499', font:{family:'monospace', size:11}}, grid:{color:'#2a3136'}, beginAtZero:true}
+        x:{ticks:{color:'#757575', font:{family:'Roboto', size:11}}, grid:{display:false}},
+        y:{ticks:{color:'#757575', font:{family:'Roboto', size:11}}, grid:{color:'#E0E0E0'}, beginAtZero:true}
       }
     }
   });
@@ -131,19 +170,19 @@ function makeBarChart(ctx, labels, data, color){
 function makeDonut(ctx, labels, data, colorsArr){
   return new Chart(ctx, {
     type:'doughnut',
-    data:{ labels, datasets:[{ data, backgroundColor: colorsArr, borderColor:'#161b1e', borderWidth:2 }]},
+    data:{ labels, datasets:[{ data, backgroundColor: colorsArr, borderColor:'#fff', borderWidth:2 }]},
     options:{
       responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{position:'bottom', labels:{color:'#e7ecee', font:{family:'monospace', size:11}, boxWidth:10}}}
+      plugins:{legend:{position:'bottom', labels:{color:'#000', font:{family:'Roboto', size:11}, boxWidth:10}}}
     }
   });
 }
 
 function signalTag(type){
   const t = (type||'').toLowerCase();
-  if(t.includes('hir') || t.includes('headcount')) return '<span class="tag hire">hiring</span>';
-  if(t.includes('news') || t.includes('strategy') || t.includes('financial')) return '<span class="tag news">news</span>';
-  return '<span class="tag change">changement</span>';
+  if(t.includes('hir') || t.includes('headcount')) return '<span class="tag tag-green">hiring</span>';
+  if(t.includes('news') || t.includes('strategy') || t.includes('financial')) return '<span class="tag tag-purple">news</span>';
+  return '<span class="tag tag-blue">changement</span>';
 }
 
 async function render(){
@@ -156,7 +195,7 @@ async function render(){
 
   if(!hasData){
     $('#main').innerHTML = `<div class="empty">
-      <div class="eyebrow">Aucune donnée</div>
+      <div class="kicker">Aucune donnée</div>
       <div>Rien à afficher pour l'instant.<br/>Configurez LUSHA_API_KEY côté serveur puis lancez une sync.</div>
     </div>`;
     return;
@@ -204,18 +243,18 @@ async function render(){
           <tr>
             <td>${signalTag(s.type || s.signalType)}</td>
             <td>${s.data?.currentCompanyName || s.data?.companyName || s.companyName || '—'}</td>
-            <td style="color:var(--muted)">${(s.data?.eventSummary || s.data?.articleTitle || s.type || JSON.stringify(s).slice(0,60))}</td>
+            <td style="color:var(--grey-600)">${(s.data?.eventSummary || s.data?.articleTitle || s.type || JSON.stringify(s).slice(0,60))}</td>
           </tr>`).join('')}
       </tbody>
     </table>
   </div>` : ''}
   `;
 
-  charts.push(makeBarChart($('#c1'), Object.keys(seniorityCount), Object.values(seniorityCount), colors.signal));
-  charts.push(makeBarChart($('#c3'), Object.keys(industryCount), Object.values(industryCount), colors.violet));
-  charts.push(makeBarChart($('#c4'), Object.keys(sizeCount), Object.values(sizeCount), colors.amber));
+  charts.push(makeBarChart($('#c1'), Object.keys(seniorityCount), Object.values(seniorityCount), colors.orange));
+  charts.push(makeBarChart($('#c3'), Object.keys(industryCount), Object.values(industryCount), colors.purple));
+  charts.push(makeBarChart($('#c4'), Object.keys(sizeCount), Object.values(sizeCount), colors.yellow));
   if(hasSignals){
-    charts.push(makeDonut($('#c2'), Object.keys(signalTypeCount), Object.values(signalTypeCount), [colors.signal,colors.amber,colors.violet,colors.coral,'#4a545a']));
+    charts.push(makeDonut($('#c2'), Object.keys(signalTypeCount), Object.values(signalTypeCount), [colors.orange,colors.purple,colors.blue,colors.green,colors.yellow,colors.rust]));
   }
 }
 
