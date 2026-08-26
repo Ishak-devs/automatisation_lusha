@@ -164,15 +164,30 @@ function buildUsageColumnMap(row0Cells, row1Cells){
 }
 
 function parseUsageCSV(text){
+  // Retire le BOM (caractère invisible parfois ajouté par Excel) qui peut casser la détection d'en-tête
+  text = text.replace(/^\uFEFF/, '');
   const lines = text.split(/\r?\n/).filter(l => l.trim().length>0);
-  if(lines.length < 3) throw new Error('Fichier CSV trop court ou format inattendu.');
-  const row0 = splitCsvLine(lines[0]);
-  const row1 = splitCsvLine(lines[1]);
+
+  // Le fichier réel commence par des lignes de méta-infos (Cycle Start, Cycle End, description...)
+  // avant les vrais en-têtes. On cherche la ligne "User Group Name" pour se caler dessus.
+  let cycleStart = null, cycleEnd = null;
+  let headerIdx = -1;
+  for(let i=0; i<lines.length; i++){
+    const trimmed = lines[i].trim();
+    if(trimmed.startsWith('Cycle Start')) cycleStart = splitCsvLine(trimmed)[1];
+    if(trimmed.startsWith('Cycle End')) cycleEnd = splitCsvLine(trimmed)[1];
+    if(trimmed.startsWith('User Group Name')){ headerIdx = i; break; }
+  }
+  if(headerIdx === -1) throw new Error('En-tête "User Group Name" introuvable — le format du fichier a peut-être changé.');
+  if(lines.length < headerIdx+3) throw new Error('Fichier CSV trop court ou format inattendu.');
+
+  const row0 = splitCsvLine(lines[headerIdx]);
+  const row1 = splitCsvLine(lines[headerIdx+1]);
   const colMap = buildUsageColumnMap(row0, row1);
 
   const users = [];
   const monthsSet = new Set();
-  for(let r=2; r<lines.length; r++){
+  for(let r=headerIdx+2; r<lines.length; r++){
     const cells = splitCsvLine(lines[r]);
     const email = (cells[2]||'').trim();
     if(!email || email === '0') continue;
@@ -200,7 +215,7 @@ function parseUsageCSV(text){
     }
     users.push(user);
   }
-  return { users, months: Array.from(monthsSet) };
+  return { users, months: Array.from(monthsSet), cycleStart, cycleEnd };
 }
 
 function monthLabel(date){
@@ -294,6 +309,12 @@ async function computeAndRenderUsage(parsed){
   $('#usageBadge').textContent = `${importCount} import(s) · ${months.length} mois d'historique`;
   $('#usageSub').textContent = `Dernière analyse basée sur ${monthDisplay(refMonth)} vs ${monthDisplay(compMonth)}.`;
 
+  const usersWithRefData = users.filter(u => u.months[refMonth] && Object.values(u.months[refMonth]).some(v=>v>0)).length;
+  const debugHtml = `
+  <div style="background:#fff3e0; border:1px solid #ffcc80; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:12px; font-family:monospace; color:#5d4037;">
+    <b>DEBUG</b> — mois détectés: [${months.join(', ') || 'aucun'}] · refMonth cherché: ${refMonth} · compMonth cherché: ${compMonth} · utilisateurs total: ${users.length} · utilisateurs avec activité en ${refMonth}: ${usersWithRefData}
+  </div>`;
+
   const vigHtml = points.length ? `
     <div class="vig-head">
       <h3>Points de vigilance</h3>
@@ -349,7 +370,7 @@ async function computeAndRenderUsage(parsed){
     }).join('')}
   </div>`;
 
-  $('#usageContent').innerHTML = vigHtml + bannerHtml + gridHtml;
+  $('#usageContent').innerHTML = debugHtml + vigHtml + bannerHtml + gridHtml;
 }
 
 $('#csvBtn').addEventListener('click', () => $('#csvInput').click());
