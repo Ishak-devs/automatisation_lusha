@@ -486,10 +486,9 @@ $('#csvInput').addEventListener('change', (e) => {
   reader.onload = async (evt) => {
     try{
       importCount++;
-      localStorage.setItem('lusha_usage_csv', evt.target.result);
-      localStorage.setItem('lusha_usage_import_count', String(importCount));
       const parsed = parseUsageCSV(evt.target.result);
       await computeAndRenderUsage(parsed);
+      await saveReportToServer(parsed);
     }catch(err){
       $('#usageContent').innerHTML = `<div class="empty">Erreur d'import : ${err.message}</div>`;
     }
@@ -498,9 +497,31 @@ $('#csvInput').addEventListener('change', (e) => {
   e.target.value = '';
 });
 
+// Envoie le rapport parsé au serveur (Supabase) pour que toute l'équipe le voie
+async function saveReportToServer(parsed){
+  const now = new Date();
+  const refDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const compDate = new Date(now.getFullYear(), now.getMonth()-2, 1);
+  const refMonth = monthLabel(refDate);
+  const compMonth = monthLabel(compDate);
+  try{
+    const r = await fetch('/api/usage-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stats: { refMonth, compMonth },
+        months: parsed.months,
+        users: parsed.users,
+      })
+    });
+    const j = await r.json();
+    if(!j.ok) console.warn('Sauvegarde serveur échouée:', j.error);
+  }catch(e){
+    console.warn('Sauvegarde serveur échouée (offline ou Supabase non configuré):', e.message);
+  }
+}
+
 $('#resetBtn').addEventListener('click', () => {
-  localStorage.removeItem('lusha_usage_csv');
-  localStorage.removeItem('lusha_usage_import_count');
   importCount = 0;
   destroyUsageCharts();
   $('#evolutionCard').style.display = 'none';
@@ -510,16 +531,19 @@ $('#resetBtn').addEventListener('click', () => {
   $('#usageContent').innerHTML = '<div class="empty">Aucun rapport importé pour l\'instant.</div>';
 });
 
-// Recharge automatiquement le dernier rapport importé (persistant via localStorage)
+// Recharge le dernier rapport partagé (Supabase) au démarrage de la page
 (async function restoreLastImport(){
-  const saved = localStorage.getItem('lusha_usage_csv');
-  if(!saved) return;
   try{
-    importCount = parseInt(localStorage.getItem('lusha_usage_import_count') || '1', 10);
-    const parsed = parseUsageCSV(saved);
-    await computeAndRenderUsage(parsed);
+    const r = await fetch('/api/usage-report');
+    const j = await r.json();
+    if(j.ok && j.report){
+      importCount = 1;
+      const parsed = { users: j.report.users, months: j.report.months };
+      await computeAndRenderUsage(parsed);
+      $('#usageSub').textContent += ` (dernier import: ${new Date(j.report.imported_at).toLocaleString('fr-FR')})`;
+    }
   }catch(err){
-    $('#usageContent').innerHTML = `<div class="empty">Erreur de rechargement du dernier rapport : ${err.message}</div>`;
+    // Supabase pas encore configuré, ou pas de rapport — rien à afficher, c'est normal au premier lancement
   }
 })();
 </script>
