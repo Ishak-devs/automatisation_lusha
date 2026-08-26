@@ -5,6 +5,7 @@ const cron = require("node-cron");
 const fs = require("fs");
 const path = require("path");
 const lusha = require("./lusha");
+const axios = require("axios");
 
 const app = express();
 app.use(cors());
@@ -83,18 +84,86 @@ app.get("/api/data", (req, res) => {
   res.json(db);
 });
 
+// Génère une analyse IA (vigilance + axes d'amélioration) sur les données actuelles
+app.post("/api/insights", async (req, res) => {
+  try {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(400).json({
+        ok: false,
+        error: "ANTHROPIC_API_KEY manquante dans .env",
+      });
+    }
+    const db = readDB();
+    if (!db.contacts?.length && !db.companies?.length) {
+      return res.status(400).json({ ok: false, error: "Aucune donnée à analyser — lancez une sync d'abord." });
+    }
+
+    // Résumé compact des données (pas besoin d'envoyer les 25 fiches complètes)
+    const summary = {
+      totalContacts: db.contacts?.length || 0,
+      totalCompanies: db.companies?.length || 0,
+      senioritySample: (db.contacts || []).map((c) => c.jobTitle?.seniority || c.jobTitle?.title).filter(Boolean),
+      departmentSample: (db.contacts || []).flatMap((c) => c.jobTitle?.departments || []),
+      industrySample: (db.companies || []).map((c) => c.industry).filter(Boolean),
+      companySizeSample: (db.companies || []).map((c) => c.employeeCount).filter(Boolean),
+      countrySample: (db.contacts || []).map((c) => c.location?.country).filter(Boolean),
+    };
+
+    const prompt = `Tu es un analyste commercial qui examine un extrait de données de prospection B2B (issues de Lusha).
+Voici un résumé des données actuelles :
+${JSON.stringify(summary, null, 2)}
+
+Rédige une courte analyse en français, en deux parties, avec ces titres exacts :
+## Points de vigilance
+## Axes d'amélioration
+
+Chaque partie : 2 à 4 puces courtes et concrètes (pas de généralités creuses), basées uniquement sur ce qui ressort des données ci-dessus (ex: manque de décideurs, secteur trop dispersé, taille d'entreprise peu cohérente avec un ICP, etc). Pas de préambule, pas de conclusion, juste les deux sections.`;
+
+    const response = await axios.post(
+      "https://api.anthropic.com/v1/messages",
+      {
+        model: "claude-sonnet-5",
+        max_tokens: 600,
+        messages: [{ role: "user", content: prompt }],
+      },
+      {
+        headers: {
+          "x-api-key": process.env.ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        timeout: 30000,
+      }
+    );
+
+    const text = response.data?.content?.map((b) => b.text || "").join("\n") || "";
+    res.json({ ok: true, text, generatedAt: new Date().toISOString() });
+  } catch (err) {
+    console.error("[insights] erreur:", err.response?.data || err.message);
+    res.status(500).json({ ok: false, error: err.response?.data?.error?.message || err.message });
+  }
+});
+
 app.get("/api/status", (req, res) => {
   const db = readDB();
   res.json({ lastSync: db.lastSync, hasApiKey: !!process.env.LUSHA_API_KEY });
 });
 
-// Sync automatique — planning configurable via CRON_SCHEDULE (défaut: tous les jours à 6h)
-const schedule = process.env.CRON_SCHEDULE || "0 6 * * *";
+// Sync automatique — deux plannings : hebdomadaire et mensuel
+const weeklySchedule = process.env.CRON_SCHEDULE_WEEKLY || "0 6 * * 1"; // tous les lundis 6h
+const monthlySchedule = process.env.CRON_SCHEDULE_MONTHLY || "0 6 1 * *"; // le 1er du mois 6h
+
 if (process.env.LUSHA_API_KEY) {
-  cron.schedule(schedule, () => {
-    runSync().catch((e) => console.error("[cron] erreur sync:", e.message));
+  cron.schedule(weeklySchedule, () => {
+    console.log("[cron] déclenchement sync hebdomadaire");
+    runSync().catch((e) => console.error("[cron] erreur sync hebdo:", e.message));
   });
-  console.log(`[cron] sync automatique planifiée: "${schedule}"`);
+  cron.schedule(monthlySchedule, () => {
+    console.log("[cron] déclenchement sync mensuelle");
+    runSync().catch((e) => console.error("[cron] erreur sync mensuelle:", e.message));
+  });
+  console.log(`[cron] sync hebdomadaire planifiée: "${weeklySchedule}"`);
+  console.log(`[cron] sync mensuelle planifiée: "${monthlySchedule}"`);
 } else {
   console.warn("[cron] LUSHA_API_KEY absente — sync automatique désactivée");
 }
