@@ -108,6 +108,12 @@
   .metric-card .delta{font-size:12px; margin-top:4px; font-weight:700;}
 
   .empty{color:var(--grey-600); font-size:13px; margin-top:14px;}
+
+  .chart-card{background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:24px; margin-top:16px;}
+  .chart-card h3{font-size:14px; font-weight:700; margin:0 0 16px; text-transform:uppercase; letter-spacing:0.05em; color:var(--grey-600);}
+  .chart-card canvas{max-height:280px;}
+  .chart-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;}
+  @media(max-width:800px){.chart-grid{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -128,10 +134,27 @@
       <div>
         <input type="file" id="csvInput" accept=".csv" style="display:none;">
         <button class="csv-btn" id="csvBtn">Importer un rapport CSV</button>
+        <button class="csv-btn" id="resetBtn" style="background:transparent; color:var(--grey-600); border:2px solid var(--grey-200); margin-left:8px;">Réinitialiser</button>
       </div>
     </div>
     <div id="usageContent">
       <div class="empty">Aucun rapport importé pour l'instant.</div>
+    </div>
+  </div>
+
+  <div class="chart-card" id="evolutionCard" style="display:none;">
+    <h3>Évolution mensuelle — téléphones &amp; emails révélés</h3>
+    <canvas id="evolutionChart"></canvas>
+  </div>
+
+  <div class="chart-grid" id="chartsGrid" style="display:none;">
+    <div class="chart-card">
+      <h3>Top utilisateurs (usage total)</h3>
+      <canvas id="topUsersChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Comptes actifs vs désactivés</h3>
+      <canvas id="statusChart"></canvas>
     </div>
   </div>
 </main>
@@ -139,6 +162,8 @@
 <script>
 const $ = (s,el=document) => el.querySelector(s);
 let importCount = 0;
+let usageCharts = [];
+function destroyUsageCharts(){ usageCharts.forEach(c=>c.destroy()); usageCharts = []; }
 
 // ===== Parsing du rapport CSV d'usage Lusha =====
 
@@ -309,12 +334,6 @@ async function computeAndRenderUsage(parsed){
   $('#usageBadge').textContent = `${importCount} import(s) · ${months.length} mois d'historique`;
   $('#usageSub').textContent = `Dernière analyse basée sur ${monthDisplay(refMonth)} vs ${monthDisplay(compMonth)}.`;
 
-  const usersWithRefData = users.filter(u => u.months[refMonth] && Object.values(u.months[refMonth]).some(v=>v>0)).length;
-  const debugHtml = `
-  <div style="background:#fff3e0; border:1px solid #ffcc80; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:12px; font-family:monospace; color:#5d4037;">
-    <b>DEBUG</b> — mois détectés: [${months.join(', ') || 'aucun'}] · refMonth cherché: ${refMonth} · compMonth cherché: ${compMonth} · utilisateurs total: ${users.length} · utilisateurs avec activité en ${refMonth}: ${usersWithRefData}
-  </div>`;
-
   const vigHtml = points.length ? `
     <div class="vig-head">
       <h3>Points de vigilance</h3>
@@ -370,7 +389,93 @@ async function computeAndRenderUsage(parsed){
     }).join('')}
   </div>`;
 
-  $('#usageContent').innerHTML = debugHtml + vigHtml + bannerHtml + gridHtml;
+  $('#usageContent').innerHTML = vigHtml + bannerHtml + gridHtml;
+
+  renderExtraCharts(users, months, vals);
+}
+
+function parseMonthKey(label){
+  const [mm,yyyy] = label.split('/');
+  return parseInt(yyyy,10)*100 + parseInt(mm,10);
+}
+
+function renderExtraCharts(users, months, vals){
+  destroyUsageCharts();
+  const sortedMonths = [...months].sort((a,b)=>parseMonthKey(a)-parseMonthKey(b));
+
+  // 1) Évolution mensuelle (courbe)
+  if(sortedMonths.length){
+    $('#evolutionCard').style.display = 'block';
+    const phonesSeries = sortedMonths.map(m => sumMetric(users, m, 'Phones'));
+    const emailsSeries = sortedMonths.map(m => sumMetric(users, m, 'Emails'));
+    usageCharts.push(new Chart($('#evolutionChart'), {
+      type: 'line',
+      data: {
+        labels: sortedMonths.map(monthDisplay),
+        datasets: [
+          { label:'Téléphones révélés', data: phonesSeries, borderColor:'#FF7300', backgroundColor:'rgba(255,115,0,0.1)', tension:0.3, fill:true },
+          { label:'Emails révélés', data: emailsSeries, borderColor:'#7065A1', backgroundColor:'rgba(112,101,161,0.1)', tension:0.3, fill:true },
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'bottom', labels:{font:{family:'Roboto',size:11}} } },
+        scales:{
+          x:{ ticks:{color:'#757575', font:{family:'Roboto',size:11}}, grid:{display:false} },
+          y:{ ticks:{color:'#757575', font:{family:'Roboto',size:11}}, grid:{color:'#E0E0E0'}, beginAtZero:true }
+        }
+      }
+    }));
+  }
+
+  // 2) Top utilisateurs (par usage total = Grand Total)
+  const ranked = [...users]
+    .map(u => ({ email: u.email, total: u.totals['Grand'] || 0 }))
+    .filter(u => u.total > 0)
+    .sort((a,b) => b.total - a.total)
+    .slice(0, 10);
+
+  if(ranked.length){
+    $('#chartsGrid').style.display = 'grid';
+    usageCharts.push(new Chart($('#topUsersChart'), {
+      type: 'bar',
+      data: {
+        labels: ranked.map(u => u.email.split('@')[0]),
+        datasets: [{ data: ranked.map(u => u.total), backgroundColor: '#FF7300', borderRadius:6, maxBarThickness:28 }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ display:false } },
+        scales:{
+          x:{ ticks:{color:'#757575', font:{family:'Roboto',size:11}}, grid:{color:'#E0E0E0'}, beginAtZero:true },
+          y:{ ticks:{color:'#757575', font:{family:'Roboto',size:10}}, grid:{display:false} }
+        }
+      }
+    }));
+  }
+
+  // 3) Comptes actifs vs désactivés
+  const statusCount = {};
+  users.forEach(u => {
+    const s = u.status || 'inconnu';
+    statusCount[s] = (statusCount[s]||0) + 1;
+  });
+  const statusLabels = Object.keys(statusCount);
+  if(statusLabels.length){
+    const statusColors = { active:'#65BF92', disabled:'#E26338', inconnu:'#9e9e9e' };
+    usageCharts.push(new Chart($('#statusChart'), {
+      type: 'doughnut',
+      data: {
+        labels: statusLabels.map(s => s.charAt(0).toUpperCase()+s.slice(1)),
+        datasets: [{ data: statusLabels.map(s=>statusCount[s]), backgroundColor: statusLabels.map(s=>statusColors[s]||'#9e9e9e'), borderColor:'#fff', borderWidth:2 }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'bottom', labels:{font:{family:'Roboto',size:11}} } }
+      }
+    }));
+  }
 }
 
 $('#csvBtn').addEventListener('click', () => $('#csvInput').click());
@@ -381,6 +486,8 @@ $('#csvInput').addEventListener('change', (e) => {
   reader.onload = async (evt) => {
     try{
       importCount++;
+      localStorage.setItem('lusha_usage_csv', evt.target.result);
+      localStorage.setItem('lusha_usage_import_count', String(importCount));
       const parsed = parseUsageCSV(evt.target.result);
       await computeAndRenderUsage(parsed);
     }catch(err){
@@ -390,6 +497,31 @@ $('#csvInput').addEventListener('change', (e) => {
   reader.readAsText(file, 'UTF-8');
   e.target.value = '';
 });
+
+$('#resetBtn').addEventListener('click', () => {
+  localStorage.removeItem('lusha_usage_csv');
+  localStorage.removeItem('lusha_usage_import_count');
+  importCount = 0;
+  destroyUsageCharts();
+  $('#evolutionCard').style.display = 'none';
+  $('#chartsGrid').style.display = 'none';
+  $('#usageBadge').style.display = 'none';
+  $('#usageSub').textContent = "Importe le rapport CSV d'usage exporté depuis Lusha (bouton en haut à droite de l'admin, page Analytics).";
+  $('#usageContent').innerHTML = '<div class="empty">Aucun rapport importé pour l\'instant.</div>';
+});
+
+// Recharge automatiquement le dernier rapport importé (persistant via localStorage)
+(async function restoreLastImport(){
+  const saved = localStorage.getItem('lusha_usage_csv');
+  if(!saved) return;
+  try{
+    importCount = parseInt(localStorage.getItem('lusha_usage_import_count') || '1', 10);
+    const parsed = parseUsageCSV(saved);
+    await computeAndRenderUsage(parsed);
+  }catch(err){
+    $('#usageContent').innerHTML = `<div class="empty">Erreur de rechargement du dernier rapport : ${err.message}</div>`;
+  }
+})();
 </script>
 </body>
 </html>
