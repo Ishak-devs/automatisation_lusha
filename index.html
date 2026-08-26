@@ -375,6 +375,7 @@ $('#csvInput').addEventListener('change', (e) => {
   const reader = new FileReader();
   reader.onload = async (evt) => {
     try{
+    
       importCount++;
       localStorage.setItem('lusha_usage_csv', evt.target.result);
       localStorage.setItem('lusha_usage_import_count', String(importCount));
