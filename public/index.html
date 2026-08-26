@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Dashboard Lusha</title>
+<title>KPI Analytics — Lusha</title>
 <script src="/vendor/chart.umd.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
@@ -29,12 +29,10 @@
     font-family:var(--font); min-height:100vh;
   }
 
-  /* HEADER — style page-header de la charte */
   header{
     background:var(--black); color:#fff;
     padding:36px 40px; border-radius:var(--radius);
     margin:24px 24px 20px; position:relative; overflow:hidden;
-    display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px;
   }
   header::before{
     content:''; position:absolute; top:-60px; right:-60px;
@@ -52,228 +50,325 @@
     font-family:var(--font); font-weight:700; font-size:28px; margin:0;
     position:relative; z-index:1; letter-spacing:0.01em;
   }
-  .status{
-    font-size:12px; color:rgba(255,255,255,0.6); text-align:right; position:relative; z-index:1;
+
+  main{padding:0 24px 60px; max-width:1100px; margin:0 auto;}
+
+  .usage-card{background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:28px; margin-bottom:16px;}
+  .usage-top{display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px; margin-bottom:18px;}
+  .usage-title{font-size:20px; font-weight:700; margin:0 0 6px;}
+  .usage-sub{font-size:12px; color:var(--grey-600);}
+  .usage-badge{
+    display:inline-block; background:var(--grey-100); border-radius:20px; padding:6px 14px;
+    font-size:12px; font-weight:700; color:var(--black); margin-top:8px;
   }
-  .status b{color:#fff;}
-  button{
-    font-family:var(--font); font-size:14px; font-weight:700; background:var(--orange); color:#fff;
-    border:2px solid transparent; padding:12px 24px; border-radius:8px; cursor:pointer;
-    transition:all 0.15s; position:relative; z-index:1;
+  .csv-btn{
+    font-family:var(--font); font-size:13px; font-weight:700; background:var(--orange); color:#fff;
+    border:none; padding:10px 20px; border-radius:8px; cursor:pointer;
   }
-  button:hover{opacity:0.85; transform:translateY(-1px);}
-  button:disabled{opacity:0.5; cursor:wait; transform:none;}
+  .csv-btn:hover{opacity:0.85;}
+  .csv-btn:disabled{opacity:0.5; cursor:wait;}
 
-  main{padding:0 24px 60px; max-width:1400px; margin:0 auto;}
+  .vig-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;}
+  .vig-head h3{font-size:15px; font-weight:700; margin:0;}
+  .vig-count{padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;}
+  .vig-count.traiter{background:rgba(226,99,56,0.12); color:var(--rust);}
+  .vig-count.surveiller{background:rgba(249,177,37,0.15); color:#b07a00;}
+  .vig-count.info{background:rgba(103,177,235,0.15); color:#3a8ece;}
 
-  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:20px;}
-  .kpi{background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:20px 22px;}
-  .kpi .n{font-weight:700; font-size:30px; line-height:1;}
-  .kpi .l{color:var(--grey-600); font-size:12px; margin-top:8px; text-transform:uppercase; letter-spacing:0.06em; font-weight:700;}
+  .vig-list{margin-top:14px;}
+  .vig-item{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--grey-200);}
+  .vig-item:last-child{border-bottom:none;}
+  .vig-dot{width:9px; height:9px; border-radius:50%; margin-top:6px; flex-shrink:0;}
+  .vig-dot.traiter{background:var(--rust);}
+  .vig-dot.surveiller{background:var(--yellow);}
+  .vig-dot.info{background:var(--blue);}
+  .vig-item .t{font-weight:700; font-size:14px;}
+  .vig-item .d{font-size:13px; color:var(--grey-600); margin-top:2px;}
 
-  .grid{display:grid; grid-template-columns:1.2fr 1fr; gap:16px; margin-bottom:16px;}
-  @media(max-width:900px){.grid{grid-template-columns:1fr;}}
-
-  .card{background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:28px;}
-  .card + .card{margin-top:0;}
-  .card h2{
-    font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--grey-600);
-    margin:0 0 18px; font-weight:700;
+  .usage-banner{
+    background:var(--black); color:#fff; border-radius:var(--radius); padding:28px 32px;
+    margin-top:18px; position:relative; overflow:hidden;
   }
-  .card canvas{max-height:280px;}
-
-  .empty{
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    padding:80px 20px; color:var(--grey-600); text-align:center; gap:14px;
-    background:#fff; border-radius:var(--radius); box-shadow:var(--shadow);
+  .usage-banner::after{
+    content:''; position:absolute; top:-50px; right:-50px; width:200px; height:200px;
+    background:var(--orange); border-radius:50%; opacity:0.15;
   }
-  .empty .kicker{color:var(--orange);}
+  .usage-banner .kicker{margin-bottom:16px;}
+  .usage-banner-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:20px; position:relative; z-index:1;}
+  .usage-banner-grid .n{font-size:30px; font-weight:700; color:var(--orange); line-height:1;}
+  .usage-banner-grid .l{font-size:12px; color:rgba(255,255,255,0.7); margin-top:6px;}
+  .usage-banner-grid .delta{font-size:11px; margin-top:6px; font-weight:700;}
+  .delta.down{color:#ff8a5c;}
+  .delta.up{color:#7dd9a8;}
 
-  table{width:100%; border-collapse:collapse; font-size:13px;}
-  th,td{text-align:left; padding:10px 8px; border-bottom:1px solid var(--grey-200);}
-  th{color:var(--grey-600); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.05em;}
+  .metric-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-top:16px;}
+  .metric-card{background:var(--grey-100); border-radius:10px; padding:16px 18px;}
+  .metric-card .l{font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--grey-600); font-weight:700; margin-bottom:6px;}
+  .metric-card .n{font-size:22px; font-weight:700;}
+  .metric-card .delta{font-size:12px; margin-top:4px; font-weight:700;}
 
-  .tag{
-    display:inline-flex; align-items:center; gap:6px; padding:4px 12px;
-    border-radius:20px; font-size:12px; font-weight:700;
-  }
-  .tag-orange{background:rgba(255,115,0,0.12); color:var(--orange);}
-  .tag-purple{background:rgba(112,101,161,0.12); color:var(--purple);}
-  .tag-blue{background:rgba(103,177,235,0.15); color:#3a8ece;}
-  .tag-green{background:rgba(101,191,146,0.15); color:#2e8a5f;}
-  .tag-yellow{background:rgba(249,177,37,0.15); color:#b07a00;}
+  .empty{color:var(--grey-600); font-size:13px; margin-top:14px;}
 </style>
 </head>
 <body>
 
 <header>
-  <div>
-    <div class="kicker">Radar — pipeline commercial</div>
-    <h1>Dashboard Lusha</h1>
-  </div>
-  <div style="display:flex; align-items:center; gap:16px;">
-    <div class="status" id="status">dernière sync : —</div>
-    <button id="syncBtn">Lancer la sync</button>
-  </div>
+  <div class="kicker">Lusha — suivi d'usage équipe</div>
+  <h1>KPI Analytics</h1>
 </header>
 
-<main id="main">
-  <div class="empty">
-    <div class="kicker">Chargement</div>
-    <div>Récupération des données...</div>
+<main>
+  <div class="usage-card">
+    <div class="usage-top">
+      <div>
+        <div class="usage-title">Rapport d'usage</div>
+        <div class="usage-sub" id="usageSub">Importe le rapport CSV d'usage exporté depuis Lusha (bouton en haut à droite de l'admin, page Analytics).</div>
+        <div class="usage-badge" id="usageBadge" style="display:none;"></div>
+      </div>
+      <div>
+        <input type="file" id="csvInput" accept=".csv" style="display:none;">
+        <button class="csv-btn" id="csvBtn">Importer un rapport CSV</button>
+      </div>
+    </div>
+    <div id="usageContent">
+      <div class="empty">Aucun rapport importé pour l'instant.</div>
+    </div>
   </div>
 </main>
 
 <script>
 const $ = (s,el=document) => el.querySelector(s);
-const colors = {
-  orange:'#FF7300', purple:'#7065A1', blue:'#67B1EB',
-  yellow:'#F9B125', green:'#65BF92', rust:'#E26338', grey:'#E0E0E0'
-};
-let charts = [];
+let importCount = 0;
 
-function destroyCharts(){ charts.forEach(c=>c.destroy()); charts = []; }
+// ===== Parsing du rapport CSV d'usage Lusha =====
 
-function countBy(arr, fn){
+function splitCsvLine(line){
+  return line.split(',');
+}
+
+function buildUsageColumnMap(row0Cells, row1Cells){
   const map = {};
-  arr.forEach(item=>{
-    const k = fn(item) || 'Inconnu';
-    map[k] = (map[k]||0)+1;
-  });
+  let currentMonth = null;
+  for(let i=9; i<row1Cells.length; i++){
+    const monthCell = (row0Cells[i]||'').trim();
+    if(monthCell) currentMonth = monthCell;
+    const metric = (row1Cells[i]||'').trim();
+    if(!metric) continue;
+    if(/ Total$/.test(metric) || metric === 'Grand Total'){
+      map[i] = { metric: metric.replace(/ Total$/,'').trim(), isTotal:true, month:null };
+    } else {
+      map[i] = { metric, month: currentMonth, isTotal:false };
+    }
+  }
   return map;
 }
 
-function renderKPIs(db){
-  return `
-  <div class="kpis">
-    <div class="kpi"><div class="n" style="color:${colors.orange}">${db.contacts?.length||0}</div><div class="l">Contacts</div></div>
-    <div class="kpi"><div class="n" style="color:${colors.purple}">${db.companies?.length||0}</div><div class="l">Entreprises</div></div>
-    <div class="kpi"><div class="n" style="color:${colors.rust}">${db.lastSync ? new Date(db.lastSync).toLocaleDateString('fr-FR') : '—'}</div><div class="l">Dernière sync</div></div>
-  </div>`;
-}
+function parseUsageCSV(text){
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length>0);
+  if(lines.length < 3) throw new Error('Fichier CSV trop court ou format inattendu.');
+  const row0 = splitCsvLine(lines[0]);
+  const row1 = splitCsvLine(lines[1]);
+  const colMap = buildUsageColumnMap(row0, row1);
 
-function makeBarChart(ctx, labels, data, color){
-  return new Chart(ctx, {
-    type:'bar',
-    data:{ labels, datasets:[{ data, backgroundColor: color, borderRadius:6, maxBarThickness:34 }]},
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{ticks:{color:'#757575', font:{family:'Roboto', size:11}}, grid:{display:false}},
-        y:{ticks:{color:'#757575', font:{family:'Roboto', size:11}}, grid:{color:'#E0E0E0'}, beginAtZero:true}
+  const users = [];
+  const monthsSet = new Set();
+  for(let r=2; r<lines.length; r++){
+    const cells = splitCsvLine(lines[r]);
+    const email = (cells[2]||'').trim();
+    if(!email || email === '0') continue;
+    const user = {
+      groupName: (cells[0]||'').trim(),
+      countryCode: (cells[1]||'').trim(),
+      email,
+      status: (cells[3]||'').trim().toLowerCase(),
+      role: (cells[4]||'').trim(),
+      months: {},
+      totals: {},
+    };
+    for(const idxStr of Object.keys(colMap)){
+      const idx = Number(idxStr);
+      const info = colMap[idx];
+      const raw = cells[idx];
+      const val = (raw===undefined || raw==='') ? 0 : (Number(raw)||0);
+      if(info.isTotal){
+        user.totals[info.metric] = val;
+      } else {
+        if(!user.months[info.month]) user.months[info.month] = {};
+        user.months[info.month][info.metric] = val;
+        monthsSet.add(info.month);
       }
     }
-  });
+    users.push(user);
+  }
+  return { users, months: Array.from(monthsSet) };
 }
 
-function makeDonut(ctx, labels, data, colorsArr){
-  return new Chart(ctx, {
-    type:'doughnut',
-    data:{ labels, datasets:[{ data, backgroundColor: colorsArr, borderColor:'#fff', borderWidth:2 }]},
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{position:'bottom', labels:{color:'#000', font:{family:'Roboto', size:11}, boxWidth:10}}}
+function monthLabel(date){
+  return String(date.getMonth()+1).padStart(2,'0') + '/' + date.getFullYear();
+}
+function monthDisplay(label){
+  const [mm,yyyy] = label.split('/');
+  const noms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  return `${noms[parseInt(mm,10)-1]} ${yyyy}`;
+}
+
+function sumMetric(users, month, metric){
+  return users.reduce((s,u) => s + (u.months[month]?.[metric] || 0), 0);
+}
+function sumAllMetricsForMonth(user, month){
+  const m = user.months[month];
+  if(!m) return 0;
+  return Object.values(m).reduce((s,v)=>s+v, 0);
+}
+function pctDelta(cur, prev){
+  if(prev === 0) return cur === 0 ? 0 : 100;
+  return ((cur - prev) / prev) * 100;
+}
+function fmtN(n){ return Math.round(n).toLocaleString('fr-FR'); }
+
+async function computeAndRenderUsage(parsed){
+  const { users, months } = parsed;
+  const now = new Date();
+  const refDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const compDate = new Date(now.getFullYear(), now.getMonth()-2, 1);
+  const refMonth = monthLabel(refDate);
+  const compMonth = monthLabel(compDate);
+
+  const metrics = ['Phones','Emails','API Search','Export CSV','AI Assistant','API Company Enrichment'];
+  const metricLabels = {
+    'Phones':'Téléphones révélés', 'Emails':'Emails révélés', 'API Search':'Recherches API',
+    'Export CSV':'Exports CSV', 'AI Assistant':'Assistant IA', 'API Company Enrichment':'Enrichissement API'
+  };
+
+  const vals = {};
+  metrics.forEach(m => {
+    vals[m] = { ref: sumMetric(users, refMonth, m), comp: sumMetric(users, compMonth, m) };
+  });
+
+  const totalRevelationsRef = vals['Phones'].ref + vals['Emails'].ref;
+  const totalRevelationsComp = vals['Phones'].comp + vals['Emails'].comp;
+
+  const activeUsers = users.filter(u => u.status === 'active');
+  const inactiveActive = activeUsers.filter(u => sumAllMetricsForMonth(u, refMonth) === 0);
+
+  const points = [];
+  metrics.forEach(m => {
+    const { ref, comp } = vals[m];
+    if(comp < 5) return;
+    const delta = pctDelta(ref, comp);
+    if(delta <= -50){
+      points.push({ severity:'traiter', title:`Baisse d'activité : ${metricLabels[m]}`,
+        detail:`${Math.round(delta)}% en ${monthDisplay(refMonth)} (${fmtN(ref)} contre ${fmtN(comp)} en ${monthDisplay(compMonth)}).` });
+    } else if(delta <= -20){
+      points.push({ severity:'surveiller', title:`Baisse d'activité : ${metricLabels[m]}`,
+        detail:`${Math.round(delta)}% en ${monthDisplay(refMonth)} (${fmtN(ref)} contre ${fmtN(comp)} en ${monthDisplay(compMonth)}).` });
     }
   });
-}
-
-function signalTag(type){
-  const t = (type||'').toLowerCase();
-  if(t.includes('hir') || t.includes('headcount')) return '<span class="tag tag-green">hiring</span>';
-  if(t.includes('news') || t.includes('strategy') || t.includes('financial')) return '<span class="tag tag-purple">news</span>';
-  return '<span class="tag tag-blue">changement</span>';
-}
-
-async function render(){
-  const res = await fetch('/api/data');
-  const db = await res.json();
-  $('#status').innerHTML = db.lastSync ? `dernière sync : <b>${new Date(db.lastSync).toLocaleString('fr-FR')}</b>` : 'dernière sync : <b>jamais</b>';
-
-  const hasData = (db.contacts?.length||0) + (db.companies?.length||0) > 0;
-  destroyCharts();
-
-  if(!hasData){
-    $('#main').innerHTML = `<div class="empty">
-      <div class="kicker">Aucune donnée</div>
-      <div>Rien à afficher pour l'instant.<br/>Configurez LUSHA_API_KEY côté serveur puis lancez une sync.</div>
-    </div>`;
-    return;
+  if(inactiveActive.length > 0){
+    points.push({ severity:'info', title:`${inactiveActive.length} compte(s) actif(s) sans aucune activité`,
+      detail:`Aucune action enregistrée en ${monthDisplay(refMonth)} sur ${inactiveActive.length} des ${activeUsers.length} comptes actifs — licences potentiellement mobilisées pour rien.` });
   }
 
-  const seniorityCount = countBy(db.contacts||[], c => c.jobTitle?.seniority || c.jobTitle?.title);
-  const industryCount = countBy(db.companies||[], c => c.industry);
-  const allSignals = [...(db.companySignals||[]), ...(db.contactSignals||[])];
-  const hasSignals = allSignals.length > 0;
-  const signalTypeCount = countBy(allSignals, s => s.type || s.signalType);
-  const sizeCount = countBy(db.companies||[], c => {
-    const e = c.employeeCount;
-    if(!e) return 'Inconnu';
-    if(e.exact) return `${e.exact} employés`;
-    if(e.min || e.max) return `${e.min||'?'}–${e.max||'?'}`;
-    return 'Inconnu';
-  });
-
-  $('#main').innerHTML = renderKPIs(db) + `
-  <div class="grid">
-    <div class="card">
-      <h2>Contacts par séniorité</h2>
-      <canvas id="c1"></canvas>
-    </div>
-    <div class="card">
-      <h2>Entreprises par industrie</h2>
-      <canvas id="c3"></canvas>
-    </div>
-  </div>
-  <div class="card">
-    <h2>Entreprises par taille</h2>
-    <canvas id="c4"></canvas>
-  </div>
-  ${hasSignals ? `
-  <div class="card" style="margin-top:16px;">
-    <h2>Répartition des signaux</h2>
-    <canvas id="c2"></canvas>
-  </div>
-  <div class="card" style="margin-top:16px;">
-    <h2>Derniers signaux</h2>
-    <table>
-      <thead><tr><th>Type</th><th>Cible</th><th>Détail</th></tr></thead>
-      <tbody>
-        ${allSignals.slice(0,10).map(s => `
-          <tr>
-            <td>${signalTag(s.type || s.signalType)}</td>
-            <td>${s.data?.currentCompanyName || s.data?.companyName || s.companyName || '—'}</td>
-            <td style="color:var(--grey-600)">${(s.data?.eventSummary || s.data?.articleTitle || s.type || JSON.stringify(s).slice(0,60))}</td>
-          </tr>`).join('')}
-      </tbody>
-    </table>
-  </div>` : ''}
-  `;
-
-  charts.push(makeBarChart($('#c1'), Object.keys(seniorityCount), Object.values(seniorityCount), colors.orange));
-  charts.push(makeBarChart($('#c3'), Object.keys(industryCount), Object.values(industryCount), colors.purple));
-  charts.push(makeBarChart($('#c4'), Object.keys(sizeCount), Object.values(sizeCount), colors.yellow));
-  if(hasSignals){
-    charts.push(makeDonut($('#c2'), Object.keys(signalTypeCount), Object.values(signalTypeCount), [colors.orange,colors.purple,colors.blue,colors.green,colors.yellow,colors.rust]));
-  }
-}
-
-$('#syncBtn').addEventListener('click', async () => {
-  const btn = $('#syncBtn');
-  btn.disabled = true; btn.textContent = 'Sync en cours...';
   try{
-    const r = await fetch('/api/sync', {method:'POST'});
+    const r = await fetch('/api/usage');
     const j = await r.json();
-    if(!j.ok) throw new Error(JSON.stringify(j.error));
-    await render();
-  }catch(e){
-    alert('Erreur sync: ' + e.message);
-  }finally{
-    btn.disabled = false; btn.textContent = 'Lancer la sync';
-  }
-});
+    if(j.ok && j.usage){
+      const u = j.usage;
+      const used = u.used ?? u.creditsUsed ?? null;
+      const total = u.total ?? u.creditsTotal ?? null;
+      const remaining = u.remaining ?? u.creditsRemaining ?? (total!==null && used!==null ? total-used : null);
+      if(total){
+        const pctUsed = used !== null ? Math.round((used/total)*100) : null;
+        points.push({ severity:'info', title:`Crédits Lusha : ${pctUsed!==null?pctUsed+'% consommés':'suivi'}`,
+          detail:`${remaining!==null?fmtN(remaining):'?'} crédits restants sur ${fmtN(total)}.` });
+      }
+    }
+  }catch(e){ /* silencieux si l'API credits n'est pas configurée */ }
 
-render();
+  const order = { traiter:0, surveiller:1, info:2 };
+  points.sort((a,b)=>order[a.severity]-order[b.severity]);
+  const counts = { traiter:0, surveiller:0, info:0 };
+  points.forEach(p => counts[p.severity]++);
+
+  $('#usageBadge').style.display = 'inline-block';
+  $('#usageBadge').textContent = `${importCount} import(s) · ${months.length} mois d'historique`;
+  $('#usageSub').textContent = `Dernière analyse basée sur ${monthDisplay(refMonth)} vs ${monthDisplay(compMonth)}.`;
+
+  const vigHtml = points.length ? `
+    <div class="vig-head">
+      <h3>Points de vigilance</h3>
+      ${counts.traiter?`<span class="vig-count traiter">${counts.traiter} à traiter</span>`:''}
+      ${counts.surveiller?`<span class="vig-count surveiller">${counts.surveiller} à surveiller</span>`:''}
+      ${counts.info?`<span class="vig-count info">${counts.info} info</span>`:''}
+    </div>
+    <div class="vig-list">
+      ${points.map(p => `
+        <div class="vig-item">
+          <div class="vig-dot ${p.severity}"></div>
+          <div>
+            <div class="t">${p.title}</div>
+            <div class="d">${p.detail}</div>
+          </div>
+        </div>`).join('')}
+    </div>
+  ` : `<div class="empty">Aucun point de vigilance détecté sur la période.</div>`;
+
+  const bannerMetrics = [
+    { label:'Téléphones révélés', ref: vals['Phones'].ref, comp: vals['Phones'].comp },
+    { label:'Emails révélés', ref: vals['Emails'].ref, comp: vals['Emails'].comp },
+    { label:'Total révélations', ref: totalRevelationsRef, comp: totalRevelationsComp },
+    { label:`Comptes actifs sur ${users.length}`, ref: activeUsers.length, comp: null },
+  ];
+
+  const bannerHtml = `
+  <div class="usage-banner">
+    <div class="kicker">${monthDisplay(refMonth).toUpperCase()} · DONNÉES CSV</div>
+    <div class="usage-banner-grid">
+      ${bannerMetrics.map(m => {
+        const delta = m.comp!==null ? pctDelta(m.ref, m.comp) : null;
+        return `<div>
+          <div class="n">${fmtN(m.ref)}</div>
+          <div class="l">${m.label}</div>
+          ${delta!==null ? `<div class="delta ${delta<0?'down':'up'}">${delta<0?'▼':'▲'} ${Math.abs(Math.round(delta))}% vs ${monthDisplay(compMonth)}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  const gridMetrics = ['API Search','Export CSV','AI Assistant','API Company Enrichment'];
+  const gridHtml = `
+  <div class="metric-grid">
+    ${gridMetrics.map(m => {
+      const { ref, comp } = vals[m];
+      const delta = pctDelta(ref, comp);
+      return `<div class="metric-card">
+        <div class="l">${metricLabels[m]}</div>
+        <div class="n">${fmtN(ref)}</div>
+        <div class="delta ${delta<0?'down':'up'}" style="color:${delta<0?'#c0442a':'#2e8a5f'}">${delta<0?'▼':'▲'} ${Math.abs(Math.round(delta))}% vs ${monthDisplay(compMonth)}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  $('#usageContent').innerHTML = vigHtml + bannerHtml + gridHtml;
+}
+
+$('#csvBtn').addEventListener('click', () => $('#csvInput').click());
+$('#csvInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    try{
+      importCount++;
+      const parsed = parseUsageCSV(evt.target.result);
+      await computeAndRenderUsage(parsed);
+    }catch(err){
+      $('#usageContent').innerHTML = `<div class="empty">Erreur d'import : ${err.message}</div>`;
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+  e.target.value = '';
+});
 </script>
 </body>
 </html>

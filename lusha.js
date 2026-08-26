@@ -87,9 +87,55 @@ async function getContactSignals(contactIds = [], signalTypes = ["allSignals"]) 
   return res.data?.results || [];
 }
 
+function ownerBody() {
+  const email = process.env.LUSHA_OWNER_EMAIL;
+  if (!email) throw new Error("LUSHA_OWNER_EMAIL manquante dans .env (requis pour l'API Tables)");
+  return { owner: { email } };
+}
+
+// Liste les tables (Workspace) de contacts sauvegardées par l'équipe
+async function listContactTables() {
+  const api = client();
+  const res = await api.post("/contacts/tables/list", ownerBody());
+  return res.data?.results || res.data?.tables || [];
+}
+
+// Liste les tables (Workspace) d'entreprises sauvegardées par l'équipe
+async function listCompanyTables() {
+  const api = client();
+  const res = await api.post("/companies/tables/list", ownerBody());
+  return res.data?.results || res.data?.tables || [];
+}
+
+// Lit toutes les lignes (avec colonnes) d'une table de contacts
+async function getContactsFromTable(tableId, size = 100) {
+  const api = client();
+  const res = await api.post("/contacts/tables/entities/get", {
+    tableId,
+    pagination: { page: 0, size },
+    ...ownerBody(),
+  });
+  return res.data?.results || res.data?.entities || [];
+}
+
+// Lit toutes les lignes (avec colonnes) d'une table d'entreprises
+async function getCompaniesFromTable(tableId, size = 100) {
+  const api = client();
+  const res = await api.post("/companies/tables/entities/get", {
+    tableId,
+    pagination: { page: 0, size },
+    ...ownerBody(),
+  });
+  return res.data?.results || res.data?.entities || [];
+}
+
 module.exports = {
   searchContacts,
   searchCompanies,
   getCompanySignals,
   getContactSignals,
+  listContactTables,
+  listCompanyTables,
+  getContactsFromTable,
+  getCompaniesFromTable,
 };
